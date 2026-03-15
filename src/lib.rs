@@ -249,19 +249,64 @@ macro_rules! mem_unit {
 
 // Binary IEC units
 mem_unit!(KiB, 1024u64, "KiB", "Kibibytes (1024 bytes).");
-mem_unit!(MiB, 1024u64 * 1024, "MiB", "Mebibytes (1024\u{00B2} bytes).");
-mem_unit!(GiB, 1024u64 * 1024 * 1024, "GiB", "Gibibytes (1024\u{00B3} bytes).");
-mem_unit!(TiB, 1024u64 * 1024 * 1024 * 1024, "TiB", "Tebibytes (1024\u{2074} bytes).");
-mem_unit!(PiB, 1024u64 * 1024 * 1024 * 1024 * 1024, "PiB", "Pebibytes (1024\u{2075} bytes).");
-mem_unit!(EiB, 1024u64 * 1024 * 1024 * 1024 * 1024 * 1024, "EiB", "Exbibytes (1024\u{2076} bytes).");
+mem_unit!(
+    MiB,
+    1024u64 * 1024,
+    "MiB",
+    "Mebibytes (1024\u{00B2} bytes)."
+);
+mem_unit!(
+    GiB,
+    1024u64 * 1024 * 1024,
+    "GiB",
+    "Gibibytes (1024\u{00B3} bytes)."
+);
+mem_unit!(
+    TiB,
+    1024u64 * 1024 * 1024 * 1024,
+    "TiB",
+    "Tebibytes (1024\u{2074} bytes)."
+);
+mem_unit!(
+    PiB,
+    1024u64 * 1024 * 1024 * 1024 * 1024,
+    "PiB",
+    "Pebibytes (1024\u{2075} bytes)."
+);
+mem_unit!(
+    EiB,
+    1024u64 * 1024 * 1024 * 1024 * 1024 * 1024,
+    "EiB",
+    "Exbibytes (1024\u{2076} bytes)."
+);
 
 // Decimal SI units
 mem_unit!(KB, 1000u64, "KB", "Kilobytes (1000 bytes).");
 mem_unit!(MB, 1000u64 * 1000, "MB", "Megabytes (1000\u{00B2} bytes).");
-mem_unit!(GB, 1000u64 * 1000 * 1000, "GB", "Gigabytes (1000\u{00B3} bytes).");
-mem_unit!(TB, 1000u64 * 1000 * 1000 * 1000, "TB", "Terabytes (1000\u{2074} bytes).");
-mem_unit!(PB, 1000u64 * 1000 * 1000 * 1000 * 1000, "PB", "Petabytes (1000\u{2075} bytes).");
-mem_unit!(EB, 1000u64 * 1000 * 1000 * 1000 * 1000 * 1000, "EB", "Exabytes (1000\u{2076} bytes).");
+mem_unit!(
+    GB,
+    1000u64 * 1000 * 1000,
+    "GB",
+    "Gigabytes (1000\u{00B3} bytes)."
+);
+mem_unit!(
+    TB,
+    1000u64 * 1000 * 1000 * 1000,
+    "TB",
+    "Terabytes (1000\u{2074} bytes)."
+);
+mem_unit!(
+    PB,
+    1000u64 * 1000 * 1000 * 1000 * 1000,
+    "PB",
+    "Petabytes (1000\u{2075} bytes)."
+);
+mem_unit!(
+    EB,
+    1000u64 * 1000 * 1000 * 1000 * 1000 * 1000,
+    "EB",
+    "Exabytes (1000\u{2076} bytes)."
+);
 
 #[cfg(test)]
 mod tests {
@@ -328,16 +373,10 @@ mod tests {
         let size = Bytes::from(100);
 
         // Test adding zero
-        assert_eq!(
-            size.checked_add(Bytes::from(0)),
-            Some(Bytes::from(100))
-        );
+        assert_eq!(size.checked_add(Bytes::from(0)), Some(Bytes::from(100)));
 
         // Test adding non-zero
-        assert_eq!(
-            size.checked_add(Bytes::from(50)),
-            Some(Bytes::from(150))
-        );
+        assert_eq!(size.checked_add(Bytes::from(50)), Some(Bytes::from(150)));
 
         // Test overflow
         let max_size = Bytes::from(u64::MAX);
@@ -349,16 +388,10 @@ mod tests {
         let size = Bytes::from(100);
 
         // Test subtracting zero
-        assert_eq!(
-            size.checked_sub(Bytes::from(0)),
-            Some(Bytes::from(100))
-        );
+        assert_eq!(size.checked_sub(Bytes::from(0)), Some(Bytes::from(100)));
 
         // Test subtracting non-zero
-        assert_eq!(
-            size.checked_sub(Bytes::from(50)),
-            Some(Bytes::from(50))
-        );
+        assert_eq!(size.checked_sub(Bytes::from(50)), Some(Bytes::from(50)));
 
         // Test underflow
         assert_eq!(size.checked_sub(Bytes::from(150)), None);
@@ -369,10 +402,7 @@ mod tests {
         let size = Bytes::from(100);
 
         // Test normal addition
-        assert_eq!(
-            size.saturating_add(Bytes::from(50)),
-            Bytes::from(150)
-        );
+        assert_eq!(size.saturating_add(Bytes::from(50)), Bytes::from(150));
 
         // Test overflow
         let max_size = Bytes::from(u64::MAX);
@@ -387,15 +417,65 @@ mod tests {
         let size = Bytes::from(100);
 
         // Test normal subtraction
-        assert_eq!(
-            size.saturating_sub(Bytes::from(50)),
-            Bytes::from(50)
-        );
+        assert_eq!(size.saturating_sub(Bytes::from(50)), Bytes::from(50));
 
         // Test underflow
-        assert_eq!(
-            size.saturating_sub(Bytes::from(150)),
-            Bytes::from(0)
-        );
+        assert_eq!(size.saturating_sub(Bytes::from(150)), Bytes::from(0));
+    }
+
+    #[test]
+    fn decimal_units_smoke() {
+        let mb = MB::from(5);
+        assert_eq!(mb.to_bytes().unwrap().count(), 5_000_000);
+
+        let gb = GB::from(2);
+        assert_eq!(gb.to_exact::<MB>().unwrap().count(), 2_000);
+
+        let tb = TB::from(1);
+        assert_eq!(tb.to_exact::<GB>().unwrap().count(), 1_000);
+
+        let kb = KB::from(3_000);
+        assert_eq!(kb.to_exact::<MB>().unwrap().count(), 3);
+    }
+
+    #[test]
+    fn display_formatting() {
+        assert_eq!(format!("{}", Bytes::from(42)), "42 B");
+        assert_eq!(format!("{}", KiB::from(10)), "10 KiB");
+        assert_eq!(format!("{}", MiB::from(5)), "5 MiB");
+        assert_eq!(format!("{}", GiB::from(1)), "1 GiB");
+        assert_eq!(format!("{}", TiB::from(2)), "2 TiB");
+        assert_eq!(format!("{}", PiB::from(3)), "3 PiB");
+        assert_eq!(format!("{}", EiB::from(4)), "4 EiB");
+        assert_eq!(format!("{}", KB::from(7)), "7 KB");
+        assert_eq!(format!("{}", MB::from(8)), "8 MB");
+        assert_eq!(format!("{}", GB::from(9)), "9 GB");
+        assert_eq!(format!("{}", TB::from(10)), "10 TB");
+        assert_eq!(format!("{}", PB::from(11)), "11 PB");
+        assert_eq!(format!("{}", EB::from(12)), "12 EB");
+    }
+
+    #[test]
+    fn default_is_zero() {
+        assert_eq!(Bytes::default().count(), 0);
+        assert_eq!(KiB::default().count(), 0);
+        assert_eq!(MiB::default().count(), 0);
+        assert_eq!(GiB::default().count(), 0);
+        assert_eq!(MB::default().count(), 0);
+        assert_eq!(GB::default().count(), 0);
+    }
+
+    #[test]
+    fn into_u64() {
+        assert_eq!(u64::from(Bytes::from(99)), 99);
+        assert_eq!(u64::from(MiB::from(42)), 42);
+        assert_eq!(u64::from(GB::from(7)), 7);
+    }
+
+    #[test]
+    fn identity_conversion() {
+        assert_eq!(GiB::from(5).to_exact::<GiB>().unwrap().count(), 5);
+        assert_eq!(MB::from(100).to_exact::<MB>().unwrap().count(), 100);
+        assert_eq!(Bytes::from(1024).to_exact::<Bytes>().unwrap().count(), 1024);
     }
 }
