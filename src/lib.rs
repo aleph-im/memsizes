@@ -23,12 +23,12 @@ pub enum MemConvError {
 /// The *semantic value* is "count of this unit", stored as an integer.
 /// Each type specifies its bytes-per-unit as a `u64` constant.
 pub trait MemorySize: Sized + Copy {
-    /// Count of units (e.g., "5 MiB" => 5).
-    fn units(self) -> u64;
+    /// Number of units (e.g., "5 MiB" => 5).
+    fn count(self) -> u64;
 
     /// Convert value to `f64` (for convenience).
-    fn as_f64(self) -> f64 {
-        self.units() as f64
+    fn to_f64(self) -> f64 {
+        self.count() as f64
     }
 
     /// Construct from a count of units (no validation besides overflow domain).
@@ -40,7 +40,7 @@ pub trait MemorySize: Sized + Copy {
     /// Convert to raw bytes as a `Bytes` newtype (checked multiply).
     fn to_bytes(self) -> Result<Bytes, MemConvError> {
         let bytes = self
-            .units()
+            .count()
             .checked_mul(Self::BYTES_PER_UNIT)
             .ok_or(MemConvError::Overflow)?;
         Ok(Bytes::from_units(bytes))
@@ -50,7 +50,7 @@ pub trait MemorySize: Sized + Copy {
     ///
     /// This performs: `self.bytes() / T::BYTES_PER_UNIT`, rounded as requested.
     fn to_rounded<T: MemorySize>(self, mode: Rounding) -> Result<T, MemConvError> {
-        let b = self.to_bytes()?.units();
+        let b = self.to_bytes()?.count();
         let d = T::BYTES_PER_UNIT;
 
         let (q, r) = (b / d, b % d);
@@ -74,7 +74,7 @@ pub trait MemorySize: Sized + Copy {
 
     /// Convert to another unit **only if exact** (no remainder).
     fn to_exact<T: MemorySize>(self) -> Option<T> {
-        let b = self.to_bytes().ok()?.units();
+        let b = self.to_bytes().ok()?.count();
         if b % T::BYTES_PER_UNIT == 0 {
             Some(T::from_units(b / T::BYTES_PER_UNIT))
         } else {
@@ -83,19 +83,19 @@ pub trait MemorySize: Sized + Copy {
     }
 
     fn checked_add(self, rhs: Self) -> Option<Self> {
-        self.units().checked_add(rhs.units()).map(Self::from_units)
+        self.count().checked_add(rhs.count()).map(Self::from_units)
     }
 
     fn checked_sub(self, rhs: Self) -> Option<Self> {
-        self.units().checked_sub(rhs.units()).map(Self::from_units)
+        self.count().checked_sub(rhs.count()).map(Self::from_units)
     }
 
     fn saturating_add(self, rhs: Self) -> Self {
-        Self::from_units(self.units().saturating_add(rhs.units()))
+        Self::from_units(self.count().saturating_add(rhs.count()))
     }
 
     fn saturating_sub(self, rhs: Self) -> Self {
-        Self::from_units(self.units().saturating_sub(rhs.units()))
+        Self::from_units(self.count().saturating_sub(rhs.count()))
     }
 }
 
@@ -105,7 +105,7 @@ pub struct Bytes(u64);
 
 impl MemorySize for Bytes {
     #[inline]
-    fn units(self) -> u64 {
+    fn count(self) -> u64 {
         self.0
     }
     #[inline]
@@ -136,7 +136,7 @@ macro_rules! mem_unit {
         pub struct $name(u64);
         impl MemorySize for $name {
             #[inline]
-            fn units(self) -> u64 {
+            fn count(self) -> u64 {
                 self.0
             }
             #[inline]
@@ -154,8 +154,8 @@ macro_rules! mem_unit {
         impl TryFrom<Bytes> for $name {
             type Error = MemConvError;
             fn try_from(b: Bytes) -> Result<Self, Self::Error> {
-                if b.units() % Self::BYTES_PER_UNIT == 0 {
-                    Ok(Self(b.units() / Self::BYTES_PER_UNIT))
+                if b.count() % Self::BYTES_PER_UNIT == 0 {
+                    Ok(Self(b.count() / Self::BYTES_PER_UNIT))
                 } else {
                     Err(MemConvError::Inexact)
                 }
@@ -192,18 +192,18 @@ mod tests {
     fn roundtrip_bytes() {
         let m = MiB::from_units(5);
         let b = m.to_bytes().unwrap();
-        assert_eq!(b.units(), 5 * MiB::BYTES_PER_UNIT);
+        assert_eq!(b.count(), 5 * MiB::BYTES_PER_UNIT);
         assert_eq!(m, b.to_exact::<MiB>().unwrap());
     }
 
     #[test]
     fn to_exact_and_rounded() {
         let g = GiB::from_units(2); // 2 GiB
-        assert_eq!(g.to_exact::<MiB>().unwrap().units(), 2048);
+        assert_eq!(g.to_exact::<MiB>().unwrap().count(), 2048);
 
         let two_gib_in_mb_floor = g.to_rounded::<MB>(Rounding::Floor).unwrap();
         let two_gib_in_mb_ceil = g.to_rounded::<MB>(Rounding::Ceil).unwrap();
-        assert!(two_gib_in_mb_ceil.units() >= two_gib_in_mb_floor.units());
+        assert!(two_gib_in_mb_ceil.count() >= two_gib_in_mb_floor.count());
     }
 
     #[test]
@@ -217,19 +217,19 @@ mod tests {
     fn rounding_nearest() {
         // Rounds down: 1500 bytes / 1024 = 1.46..., nearest is 1
         let b = Bytes::from_units(1500);
-        assert_eq!(b.to_rounded::<KiB>(Rounding::Nearest).unwrap().units(), 1);
+        assert_eq!(b.to_rounded::<KiB>(Rounding::Nearest).unwrap().count(), 1);
 
         // Rounds up: 1800 bytes / 1024 = 1.76..., nearest is 2
         let b = Bytes::from_units(1800);
-        assert_eq!(b.to_rounded::<KiB>(Rounding::Nearest).unwrap().units(), 2);
+        assert_eq!(b.to_rounded::<KiB>(Rounding::Nearest).unwrap().count(), 2);
 
         // Tie, q even (stays): 2560 bytes / 1024 = 2.5, q=2 is even → 2
         let b = Bytes::from_units(2560);
-        assert_eq!(b.to_rounded::<KiB>(Rounding::Nearest).unwrap().units(), 2);
+        assert_eq!(b.to_rounded::<KiB>(Rounding::Nearest).unwrap().count(), 2);
 
         // Tie, q odd (rounds up): 1536 bytes / 1024 = 1.5, q=1 is odd → 2
         let b = Bytes::from_units(1536);
-        assert_eq!(b.to_rounded::<KiB>(Rounding::Nearest).unwrap().units(), 2);
+        assert_eq!(b.to_rounded::<KiB>(Rounding::Nearest).unwrap().count(), 2);
     }
 
     #[test]
