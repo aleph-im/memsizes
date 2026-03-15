@@ -132,6 +132,11 @@ impl MemorySize for Bytes {
         Self(units)
     }
     const BYTES_PER_UNIT: u64 = 1;
+
+    #[inline]
+    fn to_bytes(self) -> Result<Bytes, MemConvError> {
+        Ok(self)
+    }
 }
 
 impl fmt::Display for Bytes {
