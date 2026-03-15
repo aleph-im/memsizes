@@ -1,3 +1,27 @@
+//! Type-safe memory size newtypes with checked conversions and arithmetic.
+//!
+//! Each unit (`Bytes`, `KiB`, `MiB`, `GiB`, etc.) is a distinct type so the
+//! compiler prevents mixing up binary and decimal sizes or raw byte counts.
+//!
+//! ```
+//! use memsizes::{GiB, MiB, MB, MemorySize, Rounding};
+//!
+//! let mem = GiB::from_units(2);
+//!
+//! // Exact conversion (binary → binary)
+//! let mib: MiB = mem.to_exact().unwrap();
+//! assert_eq!(mib.count(), 2048);
+//!
+//! // Rounded conversion (binary → decimal)
+//! let mb = mem.to_rounded::<MB>(Rounding::Ceil).unwrap();
+//!
+//! // Checked arithmetic (both operands must be the same type)
+//! let total = mib.checked_add(MiB::from_units(512)).unwrap();
+//! assert_eq!(total.count(), 2560);
+//! ```
+
+#![warn(missing_docs)]
+
 use std::fmt;
 
 #[cfg(feature = "serde")]
@@ -6,21 +30,27 @@ use serde::{Deserialize, Serialize};
 /// How to round when a conversion isn't an exact integer.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Rounding {
-    Floor,   // toward zero
-    Ceil,    // away from zero
-    Nearest, // ties to even
+    /// Round toward zero.
+    Floor,
+    /// Round away from zero.
+    Ceil,
+    /// Round to nearest, ties to even.
+    Nearest,
 }
 
 /// Error for failed conversions (overflow, rounding disallowed, etc.)
 #[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
 pub enum MemConvError {
+    /// The intermediate byte value overflowed `u64`.
     #[error("conversion overflowed u64 range")]
     Overflow,
+    /// The byte count is not exactly divisible by the target unit size.
     #[error("byte count is not exactly divisible by target unit size")]
     Inexact,
 }
 
 mod sealed {
+    /// Sealing trait — prevents external implementations of [`super::MemorySize`].
     pub trait Sealed {}
 }
 
@@ -89,18 +119,22 @@ pub trait MemorySize: Sized + Copy + sealed::Sealed {
         }
     }
 
+    /// Checked addition. Returns `None` on overflow.
     fn checked_add(self, rhs: Self) -> Option<Self> {
         self.count().checked_add(rhs.count()).map(Self::from_units)
     }
 
+    /// Checked subtraction. Returns `None` on underflow.
     fn checked_sub(self, rhs: Self) -> Option<Self> {
         self.count().checked_sub(rhs.count()).map(Self::from_units)
     }
 
+    /// Saturating addition. Clamps at `u64::MAX` on overflow.
     fn saturating_add(self, rhs: Self) -> Self {
         Self::from_units(self.count().saturating_add(rhs.count()))
     }
 
+    /// Saturating subtraction. Clamps at zero on underflow.
     fn saturating_sub(self, rhs: Self) -> Self {
         Self::from_units(self.count().saturating_sub(rhs.count()))
     }
@@ -110,6 +144,7 @@ pub trait MemorySize: Sized + Copy + sealed::Sealed {
 #[must_use]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Default)]
 pub struct Bytes(u64);
 
 impl Bytes {
@@ -157,15 +192,10 @@ impl From<Bytes> for u64 {
     }
 }
 
-impl Default for Bytes {
-    fn default() -> Self {
-        Self(0)
-    }
-}
-
 /// Helper macro to declare a new memory unit and implement `MemorySize` + basic From/TryFrom.
 macro_rules! mem_unit {
-    ($name:ident, $bytes_per_unit:expr, $suffix:expr) => {
+    ($name:ident, $bytes_per_unit:expr, $suffix:expr, $doc:expr) => {
+        #[doc = $doc]
         #[must_use]
         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
         #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -229,20 +259,20 @@ macro_rules! mem_unit {
 }
 
 // Binary IEC units
-mem_unit!(KiB, 1024u64, "KiB");
-mem_unit!(MiB, 1024u64 * 1024, "MiB");
-mem_unit!(GiB, 1024u64 * 1024 * 1024, "GiB");
-mem_unit!(TiB, 1024u64 * 1024 * 1024 * 1024, "TiB");
-mem_unit!(PiB, 1024u64 * 1024 * 1024 * 1024 * 1024, "PiB");
-mem_unit!(EiB, 1024u64 * 1024 * 1024 * 1024 * 1024 * 1024, "EiB");
+mem_unit!(KiB, 1024u64, "KiB", "Kibibytes (1024 bytes).");
+mem_unit!(MiB, 1024u64 * 1024, "MiB", "Mebibytes (1024\u{00B2} bytes).");
+mem_unit!(GiB, 1024u64 * 1024 * 1024, "GiB", "Gibibytes (1024\u{00B3} bytes).");
+mem_unit!(TiB, 1024u64 * 1024 * 1024 * 1024, "TiB", "Tebibytes (1024\u{2074} bytes).");
+mem_unit!(PiB, 1024u64 * 1024 * 1024 * 1024 * 1024, "PiB", "Pebibytes (1024\u{2075} bytes).");
+mem_unit!(EiB, 1024u64 * 1024 * 1024 * 1024 * 1024 * 1024, "EiB", "Exbibytes (1024\u{2076} bytes).");
 
 // Decimal SI units
-mem_unit!(KB, 1000u64, "KB");
-mem_unit!(MB, 1000u64 * 1000, "MB");
-mem_unit!(GB, 1000u64 * 1000 * 1000, "GB");
-mem_unit!(TB, 1000u64 * 1000 * 1000 * 1000, "TB");
-mem_unit!(PB, 1000u64 * 1000 * 1000 * 1000 * 1000, "PB");
-mem_unit!(EB, 1000u64 * 1000 * 1000 * 1000 * 1000 * 1000, "EB");
+mem_unit!(KB, 1000u64, "KB", "Kilobytes (1000 bytes).");
+mem_unit!(MB, 1000u64 * 1000, "MB", "Megabytes (1000\u{00B2} bytes).");
+mem_unit!(GB, 1000u64 * 1000 * 1000, "GB", "Gigabytes (1000\u{00B3} bytes).");
+mem_unit!(TB, 1000u64 * 1000 * 1000 * 1000, "TB", "Terabytes (1000\u{2074} bytes).");
+mem_unit!(PB, 1000u64 * 1000 * 1000 * 1000 * 1000, "PB", "Petabytes (1000\u{2075} bytes).");
+mem_unit!(EB, 1000u64 * 1000 * 1000 * 1000 * 1000 * 1000, "EB", "Exabytes (1000\u{2076} bytes).");
 
 #[cfg(test)]
 mod tests {
