@@ -6,7 +6,7 @@
 //! ```
 //! use memsizes::{GiB, MiB, MB, MemorySize, Rounding};
 //!
-//! let mem = GiB::from_units(2);
+//! let mem = GiB::from(2);
 //!
 //! // Exact conversion (binary → binary)
 //! let mib: MiB = mem.to_exact().unwrap();
@@ -16,7 +16,7 @@
 //! let mb = mem.to_rounded::<MB>(Rounding::Ceil).unwrap();
 //!
 //! // Checked arithmetic (both operands must be the same type)
-//! let total = mib.checked_add(MiB::from_units(512)).unwrap();
+//! let total = mib.checked_add(MiB::from(512)).unwrap();
 //! assert_eq!(total.count(), 2560);
 //! ```
 
@@ -59,7 +59,7 @@ mod sealed {
 /// Each type specifies its bytes-per-unit as a `u64` constant.
 ///
 /// This trait is sealed and cannot be implemented outside this crate.
-pub trait MemorySize: Sized + Copy + sealed::Sealed {
+pub trait MemorySize: Sized + Copy + From<u64> + sealed::Sealed {
     /// Number of units (e.g., "5 MiB" => 5).
     fn count(self) -> u64;
 
@@ -67,9 +67,6 @@ pub trait MemorySize: Sized + Copy + sealed::Sealed {
     fn to_f64(self) -> f64 {
         self.count() as f64
     }
-
-    /// Construct from a count of units (no validation besides overflow domain).
-    fn from_units(units: u64) -> Self;
 
     /// Exact bytes per 1 unit of this type (e.g., MiB = 1_048_576).
     const BYTES_PER_UNIT: u64;
@@ -80,7 +77,7 @@ pub trait MemorySize: Sized + Copy + sealed::Sealed {
             .count()
             .checked_mul(Self::BYTES_PER_UNIT)
             .ok_or(MemConvError::Overflow)?;
-        Ok(Bytes::from_units(bytes))
+        Ok(Bytes::from(bytes))
     }
 
     /// Convert to another memory unit with **rounding**.
@@ -106,14 +103,14 @@ pub trait MemorySize: Sized + Copy + sealed::Sealed {
         };
 
         let units = q.checked_add(add).ok_or(MemConvError::Overflow)?;
-        Ok(T::from_units(units))
+        Ok(T::from(units))
     }
 
     /// Convert to another unit **only if exact** (no remainder).
     fn to_exact<T: MemorySize>(self) -> Result<T, MemConvError> {
         let b = self.to_bytes()?.count();
         if b % T::BYTES_PER_UNIT == 0 {
-            Ok(T::from_units(b / T::BYTES_PER_UNIT))
+            Ok(T::from(b / T::BYTES_PER_UNIT))
         } else {
             Err(MemConvError::Inexact)
         }
@@ -121,22 +118,22 @@ pub trait MemorySize: Sized + Copy + sealed::Sealed {
 
     /// Checked addition. Returns `None` on overflow.
     fn checked_add(self, rhs: Self) -> Option<Self> {
-        self.count().checked_add(rhs.count()).map(Self::from_units)
+        self.count().checked_add(rhs.count()).map(Self::from)
     }
 
     /// Checked subtraction. Returns `None` on underflow.
     fn checked_sub(self, rhs: Self) -> Option<Self> {
-        self.count().checked_sub(rhs.count()).map(Self::from_units)
+        self.count().checked_sub(rhs.count()).map(Self::from)
     }
 
     /// Saturating addition. Clamps at `u64::MAX` on overflow.
     fn saturating_add(self, rhs: Self) -> Self {
-        Self::from_units(self.count().saturating_add(rhs.count()))
+        Self::from(self.count().saturating_add(rhs.count()))
     }
 
     /// Saturating subtraction. Clamps at zero on underflow.
     fn saturating_sub(self, rhs: Self) -> Self {
-        Self::from_units(self.count().saturating_sub(rhs.count()))
+        Self::from(self.count().saturating_sub(rhs.count()))
     }
 }
 
@@ -161,10 +158,6 @@ impl MemorySize for Bytes {
     #[inline]
     fn count(self) -> u64 {
         self.0
-    }
-    #[inline]
-    fn from_units(units: u64) -> Self {
-        Self(units)
     }
     const BYTES_PER_UNIT: u64 = 1;
 
@@ -201,7 +194,7 @@ macro_rules! mem_unit {
         #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
         pub struct $name(u64);
         impl $name {
-            /// Returns the unit count (e.g., `MiB::from_units(5).count() == 5`).
+            /// Returns the unit count (e.g., `MiB::from(5u64).count() == 5`).
             #[inline]
             pub fn count(self) -> u64 {
                 self.0
@@ -212,10 +205,6 @@ macro_rules! mem_unit {
             #[inline]
             fn count(self) -> u64 {
                 self.0
-            }
-            #[inline]
-            fn from_units(units: u64) -> Self {
-                Self(units)
             }
             const BYTES_PER_UNIT: u64 = $bytes_per_unit;
         }
@@ -280,7 +269,7 @@ mod tests {
 
     #[test]
     fn roundtrip_bytes() {
-        let m = MiB::from_units(5);
+        let m = MiB::from(5);
         let b = m.to_bytes().unwrap();
         assert_eq!(b.count(), 5 * MiB::BYTES_PER_UNIT);
         assert_eq!(m, b.to_exact::<MiB>().unwrap());
@@ -288,7 +277,7 @@ mod tests {
 
     #[test]
     fn to_exact_and_rounded() {
-        let g = GiB::from_units(2); // 2 GiB
+        let g = GiB::from(2); // 2 GiB
         assert_eq!(g.to_exact::<MiB>().unwrap().count(), 2048);
 
         let two_gib_in_mb_floor = g.to_rounded::<MB>(Rounding::Floor).unwrap();
@@ -299,114 +288,114 @@ mod tests {
     #[test]
     fn overflow_guard() {
         // A very large value that would overflow when multiplied by BYTES_PER_UNIT
-        let big = GiB::from_units(u64::MAX / GiB::BYTES_PER_UNIT + 1);
+        let big = GiB::from(u64::MAX / GiB::BYTES_PER_UNIT + 1);
         assert!(matches!(big.to_bytes(), Err(MemConvError::Overflow)));
     }
 
     #[test]
     fn rounding_nearest() {
         // Rounds down: 1500 bytes / 1024 = 1.46..., nearest is 1
-        let b = Bytes::from_units(1500);
+        let b = Bytes::from(1500);
         assert_eq!(b.to_rounded::<KiB>(Rounding::Nearest).unwrap().count(), 1);
 
         // Rounds up: 1800 bytes / 1024 = 1.76..., nearest is 2
-        let b = Bytes::from_units(1800);
+        let b = Bytes::from(1800);
         assert_eq!(b.to_rounded::<KiB>(Rounding::Nearest).unwrap().count(), 2);
 
         // Tie, q even (stays): 2560 bytes / 1024 = 2.5, q=2 is even → 2
-        let b = Bytes::from_units(2560);
+        let b = Bytes::from(2560);
         assert_eq!(b.to_rounded::<KiB>(Rounding::Nearest).unwrap().count(), 2);
 
         // Tie, q odd (rounds up): 1536 bytes / 1024 = 1.5, q=1 is odd → 2
-        let b = Bytes::from_units(1536);
+        let b = Bytes::from(1536);
         assert_eq!(b.to_rounded::<KiB>(Rounding::Nearest).unwrap().count(), 2);
     }
 
     #[test]
     fn try_from_bytes_inexact() {
-        let b = Bytes::from_units(1025); // not divisible by 1024
+        let b = Bytes::from(1025); // not divisible by 1024
         assert!(matches!(KiB::try_from(b), Err(MemConvError::Inexact)));
     }
 
     #[test]
     fn try_from_unit_to_bytes_overflow() {
-        let big = GiB::from_units(u64::MAX);
+        let big = GiB::from(u64::MAX);
         assert!(matches!(Bytes::try_from(big), Err(MemConvError::Overflow)));
     }
 
     #[test]
     fn test_bytes_checked_add() {
-        let size = Bytes::from_units(100);
+        let size = Bytes::from(100);
 
         // Test adding zero
         assert_eq!(
-            size.checked_add(Bytes::from_units(0)),
-            Some(Bytes::from_units(100))
+            size.checked_add(Bytes::from(0)),
+            Some(Bytes::from(100))
         );
 
         // Test adding non-zero
         assert_eq!(
-            size.checked_add(Bytes::from_units(50)),
-            Some(Bytes::from_units(150))
+            size.checked_add(Bytes::from(50)),
+            Some(Bytes::from(150))
         );
 
         // Test overflow
-        let max_size = Bytes::from_units(u64::MAX);
-        assert_eq!(max_size.checked_add(Bytes::from_units(1)), None);
+        let max_size = Bytes::from(u64::MAX);
+        assert_eq!(max_size.checked_add(Bytes::from(1)), None);
     }
 
     #[test]
     fn test_bytes_checked_sub() {
-        let size = Bytes::from_units(100);
+        let size = Bytes::from(100);
 
         // Test subtracting zero
         assert_eq!(
-            size.checked_sub(Bytes::from_units(0)),
-            Some(Bytes::from_units(100))
+            size.checked_sub(Bytes::from(0)),
+            Some(Bytes::from(100))
         );
 
         // Test subtracting non-zero
         assert_eq!(
-            size.checked_sub(Bytes::from_units(50)),
-            Some(Bytes::from_units(50))
+            size.checked_sub(Bytes::from(50)),
+            Some(Bytes::from(50))
         );
 
         // Test underflow
-        assert_eq!(size.checked_sub(Bytes::from_units(150)), None);
+        assert_eq!(size.checked_sub(Bytes::from(150)), None);
     }
 
     #[test]
     fn test_bytes_saturating_add() {
-        let size = Bytes::from_units(100);
+        let size = Bytes::from(100);
 
         // Test normal addition
         assert_eq!(
-            size.saturating_add(Bytes::from_units(50)),
-            Bytes::from_units(150)
+            size.saturating_add(Bytes::from(50)),
+            Bytes::from(150)
         );
 
         // Test overflow
-        let max_size = Bytes::from_units(u64::MAX);
+        let max_size = Bytes::from(u64::MAX);
         assert_eq!(
-            max_size.saturating_add(Bytes::from_units(1)),
-            Bytes::from_units(u64::MAX)
+            max_size.saturating_add(Bytes::from(1)),
+            Bytes::from(u64::MAX)
         );
     }
 
     #[test]
     fn test_bytes_saturating_sub() {
-        let size = Bytes::from_units(100);
+        let size = Bytes::from(100);
 
         // Test normal subtraction
         assert_eq!(
-            size.saturating_sub(Bytes::from_units(50)),
-            Bytes::from_units(50)
+            size.saturating_sub(Bytes::from(50)),
+            Bytes::from(50)
         );
 
         // Test underflow
         assert_eq!(
-            size.saturating_sub(Bytes::from_units(150)),
-            Bytes::from_units(0)
+            size.saturating_sub(Bytes::from(150)),
+            Bytes::from(0)
         );
     }
 }

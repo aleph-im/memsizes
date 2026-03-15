@@ -21,7 +21,7 @@ Stop mixing up bytes and mebibytes, or accidentally passing a decimal gigabyte w
 ```rust
 use memsizes::{GiB, MiB, MB, MemorySize, Rounding};
 
-let mem = GiB::from_units(2);
+let mem = GiB::from(2);
 
 // Exact conversion (binary → binary)
 let mib: MiB = mem.to_exact().unwrap();
@@ -31,7 +31,7 @@ assert_eq!(mib.count(), 2048);
 let mb = mem.to_rounded::<MB>(Rounding::Ceil).unwrap();
 
 // Checked arithmetic (both operands must be the same type)
-let total = mib.checked_add(MiB::from_units(512)).unwrap();
+let total = mib.checked_add(MiB::from(512)).unwrap();
 assert_eq!(total.count(), 2560);
 ```
 
