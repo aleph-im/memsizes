@@ -144,10 +144,10 @@ macro_rules! mem_unit {
             }
             const BYTES_PER_UNIT: u64 = $bytes_per_unit;
         }
-        // Convenience conversions to/from Bytes with exactness guarantees where appropriate.
-        impl From<$name> for Bytes {
-            fn from(v: $name) -> Bytes {
-                v.to_bytes().expect("u64 overflow in to_bytes")
+        impl TryFrom<$name> for Bytes {
+            type Error = MemConvError;
+            fn try_from(v: $name) -> Result<Bytes, MemConvError> {
+                v.to_bytes()
             }
         }
         impl TryFrom<Bytes> for $name {
