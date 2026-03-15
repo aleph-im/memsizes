@@ -13,8 +13,8 @@ pub enum Rounding {
 pub enum MemConvError {
     #[error("conversion overflowed u64 range")]
     Overflow,
-    #[error("zero not allowed for this type")]
-    ZeroNotAllowed, // for NonZero variants if you add them
+    #[error("byte count is not exactly divisible by target unit size")]
+    Inexact,
 }
 
 /// Core trait all memory-size newtypes implement.
@@ -156,7 +156,7 @@ macro_rules! mem_unit {
                 if b.units() % Self::BYTES_PER_UNIT == 0 {
                     Ok(Self(b.units() / Self::BYTES_PER_UNIT))
                 } else {
-                    Err(MemConvError::Overflow) // "not exactly divisible"; reuse Overflow for brevity
+                    Err(MemConvError::Inexact)
                 }
             }
         }
