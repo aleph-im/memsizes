@@ -112,6 +112,14 @@ pub trait MemorySize: Sized + Copy + sealed::Sealed {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Bytes(u64);
 
+impl Bytes {
+    /// Returns the number of bytes.
+    #[inline]
+    pub fn count(self) -> u64 {
+        self.0
+    }
+}
+
 impl sealed::Sealed for Bytes {}
 
 impl MemorySize for Bytes {
@@ -138,6 +146,12 @@ impl From<u64> for Bytes {
     }
 }
 
+impl From<Bytes> for u64 {
+    fn from(b: Bytes) -> Self {
+        b.0
+    }
+}
+
 /// Helper macro to declare a new memory unit and implement `MemorySize` + basic From/TryFrom.
 macro_rules! mem_unit {
     ($name:ident, $bytes_per_unit:expr, $suffix:expr) => {
@@ -145,6 +159,13 @@ macro_rules! mem_unit {
         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
         #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
         pub struct $name(u64);
+        impl $name {
+            /// Returns the unit count (e.g., `MiB::from_units(5).count() == 5`).
+            #[inline]
+            pub fn count(self) -> u64 {
+                self.0
+            }
+        }
         impl sealed::Sealed for $name {}
         impl MemorySize for $name {
             #[inline]
@@ -176,6 +197,11 @@ macro_rules! mem_unit {
         impl From<u64> for $name {
             fn from(v: u64) -> Self {
                 Self(v)
+            }
+        }
+        impl From<$name> for u64 {
+            fn from(v: $name) -> Self {
+                v.0
             }
         }
         impl fmt::Display for $name {
