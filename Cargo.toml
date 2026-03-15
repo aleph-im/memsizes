@@ -1,0 +1,12 @@
+[package]
+name = "memsizes"
+version = "0.1.0"
+edition = "2024"
+description = "Type-safe memory size newtypes (Bytes, KiB, MiB, GiB, KB, MB, GB) with checked conversions and arithmetic."
+license = "MIT"
+repository = "https://github.com/aleph-im/aleph-rs"
+homepage = "https://github.com/aleph-im/aleph-rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+thiserror = { version = "2" }
