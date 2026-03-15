@@ -73,12 +73,12 @@ pub trait MemorySize: Sized + Copy {
     }
 
     /// Convert to another unit **only if exact** (no remainder).
-    fn to_exact<T: MemorySize>(self) -> Option<T> {
-        let b = self.to_bytes().ok()?.count();
+    fn to_exact<T: MemorySize>(self) -> Result<T, MemConvError> {
+        let b = self.to_bytes()?.count();
         if b % T::BYTES_PER_UNIT == 0 {
-            Some(T::from_units(b / T::BYTES_PER_UNIT))
+            Ok(T::from_units(b / T::BYTES_PER_UNIT))
         } else {
-            None
+            Err(MemConvError::Inexact)
         }
     }
 
