@@ -100,6 +100,7 @@ pub trait MemorySize: Sized + Copy {
 }
 
 /// Canonical base type: raw bytes.
+#[must_use]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Bytes(u64);
 
@@ -130,6 +131,7 @@ impl From<u64> for Bytes {
 /// Helper macro to declare a new memory unit and implement `MemorySize` + basic From/TryFrom.
 macro_rules! mem_unit {
     ($name:ident, $bytes_per_unit:expr, $suffix:expr) => {
+        #[must_use]
         #[derive(
             Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
         )]
