@@ -1,3 +1,5 @@
+use std::fmt;
+
 use serde::{Deserialize, Serialize};
 
 /// How to round when a conversion isn't an exact integer.
@@ -113,6 +115,12 @@ impl MemorySize for Bytes {
     const BYTES_PER_UNIT: u64 = 1;
 }
 
+impl fmt::Display for Bytes {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} B", self.0)
+    }
+}
+
 impl From<u64> for Bytes {
     fn from(value: u64) -> Self {
         Self(value)
@@ -121,7 +129,7 @@ impl From<u64> for Bytes {
 
 /// Helper macro to declare a new memory unit and implement `MemorySize` + basic From/TryFrom.
 macro_rules! mem_unit {
-    ($name:ident, $bytes_per_unit:expr) => {
+    ($name:ident, $bytes_per_unit:expr, $suffix:expr) => {
         #[derive(
             Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
         )]
@@ -158,18 +166,23 @@ macro_rules! mem_unit {
                 Self(v)
             }
         }
+        impl fmt::Display for $name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "{} {}", self.0, $suffix)
+            }
+        }
     };
 }
 
 // Binary IEC units
-mem_unit!(KiB, 1024u64);
-mem_unit!(MiB, 1024u64 * 1024);
-mem_unit!(GiB, 1024u64 * 1024 * 1024);
+mem_unit!(KiB, 1024u64, "KiB");
+mem_unit!(MiB, 1024u64 * 1024, "MiB");
+mem_unit!(GiB, 1024u64 * 1024 * 1024, "GiB");
 
 // Decimal SI units
-mem_unit!(KB, 1000u64);
-mem_unit!(MB, 1000u64 * 1000);
-mem_unit!(GB, 1000u64 * 1000 * 1000);
+mem_unit!(KB, 1000u64, "KB");
+mem_unit!(MB, 1000u64 * 1000, "MB");
+mem_unit!(GB, 1000u64 * 1000 * 1000, "GB");
 
 #[cfg(test)]
 mod tests {
