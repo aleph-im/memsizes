@@ -201,6 +201,37 @@ mod tests {
     }
 
     #[test]
+    fn rounding_nearest() {
+        // Rounds down: 1500 bytes / 1024 = 1.46..., nearest is 1
+        let b = Bytes::from_units(1500);
+        assert_eq!(b.to_rounded::<KiB>(Rounding::Nearest).unwrap().units(), 1);
+
+        // Rounds up: 1800 bytes / 1024 = 1.76..., nearest is 2
+        let b = Bytes::from_units(1800);
+        assert_eq!(b.to_rounded::<KiB>(Rounding::Nearest).unwrap().units(), 2);
+
+        // Tie, q even (stays): 2560 bytes / 1024 = 2.5, q=2 is even → 2
+        let b = Bytes::from_units(2560);
+        assert_eq!(b.to_rounded::<KiB>(Rounding::Nearest).unwrap().units(), 2);
+
+        // Tie, q odd (rounds up): 1536 bytes / 1024 = 1.5, q=1 is odd → 2
+        let b = Bytes::from_units(1536);
+        assert_eq!(b.to_rounded::<KiB>(Rounding::Nearest).unwrap().units(), 2);
+    }
+
+    #[test]
+    fn try_from_bytes_inexact() {
+        let b = Bytes::from_units(1025); // not divisible by 1024
+        assert!(matches!(KiB::try_from(b), Err(MemConvError::Inexact)));
+    }
+
+    #[test]
+    fn try_from_unit_to_bytes_overflow() {
+        let big = GiB::from_units(u64::MAX);
+        assert!(matches!(Bytes::try_from(big), Err(MemConvError::Overflow)));
+    }
+
+    #[test]
     fn test_bytes_checked_add() {
         let size = Bytes::from_units(100);
 
