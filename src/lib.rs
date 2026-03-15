@@ -1,5 +1,6 @@
 use std::fmt;
 
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 /// How to round when a conversion isn't an exact integer.
@@ -101,7 +102,8 @@ pub trait MemorySize: Sized + Copy {
 
 /// Canonical base type: raw bytes.
 #[must_use]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Bytes(u64);
 
 impl MemorySize for Bytes {
@@ -132,9 +134,8 @@ impl From<u64> for Bytes {
 macro_rules! mem_unit {
     ($name:ident, $bytes_per_unit:expr, $suffix:expr) => {
         #[must_use]
-        #[derive(
-            Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
-        )]
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
         pub struct $name(u64);
         impl MemorySize for $name {
             #[inline]
