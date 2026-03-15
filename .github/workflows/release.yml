@@ -36,20 +36,9 @@ jobs:
           fi
           echo "Version: $CARGO_VERSION"
 
-  approve-publish:
-    name: Approve publish to crates.io
-    needs: [verify, check-version]
-    runs-on: ubuntu-latest
-    environment: crates-io-publish
-    steps:
-      - name: Summary
-        run: |
-          echo "## Ready to publish memsizes ${GITHUB_REF_NAME} to crates.io" >> $GITHUB_STEP_SUMMARY
-          echo "Approve this step to proceed with publishing." >> $GITHUB_STEP_SUMMARY
-
   publish:
     name: Publish to crates.io
-    needs: [approve-publish]
+    needs: [verify, check-version]
     runs-on: ubuntu-latest
     environment: crates-io-publish
     steps:
