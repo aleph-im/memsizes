@@ -20,10 +20,16 @@ pub enum MemConvError {
     Inexact,
 }
 
+mod sealed {
+    pub trait Sealed {}
+}
+
 /// Core trait all memory-size newtypes implement.
 /// The *semantic value* is "count of this unit", stored as an integer.
 /// Each type specifies its bytes-per-unit as a `u64` constant.
-pub trait MemorySize: Sized + Copy {
+///
+/// This trait is sealed and cannot be implemented outside this crate.
+pub trait MemorySize: Sized + Copy + sealed::Sealed {
     /// Number of units (e.g., "5 MiB" => 5).
     fn count(self) -> u64;
 
@@ -106,6 +112,8 @@ pub trait MemorySize: Sized + Copy {
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Bytes(u64);
 
+impl sealed::Sealed for Bytes {}
+
 impl MemorySize for Bytes {
     #[inline]
     fn count(self) -> u64 {
@@ -137,6 +145,7 @@ macro_rules! mem_unit {
         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
         #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
         pub struct $name(u64);
+        impl sealed::Sealed for $name {}
         impl MemorySize for $name {
             #[inline]
             fn count(self) -> u64 {
