@@ -4,7 +4,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 
 /// How to round when a conversion isn't an exact integer.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Rounding {
     Floor,   // toward zero
     Ceil,    // away from zero
@@ -157,6 +157,12 @@ impl From<Bytes> for u64 {
     }
 }
 
+impl Default for Bytes {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+
 /// Helper macro to declare a new memory unit and implement `MemorySize` + basic From/TryFrom.
 macro_rules! mem_unit {
     ($name:ident, $bytes_per_unit:expr, $suffix:expr) => {
@@ -207,6 +213,11 @@ macro_rules! mem_unit {
         impl From<$name> for u64 {
             fn from(v: $name) -> Self {
                 v.0
+            }
+        }
+        impl Default for $name {
+            fn default() -> Self {
+                Self(0)
             }
         }
         impl fmt::Display for $name {
