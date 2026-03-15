@@ -11,7 +11,7 @@ pub enum Rounding {
 }
 
 /// Error for failed conversions (overflow, rounding disallowed, etc.)
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
 pub enum MemConvError {
     #[error("conversion overflowed u64 range")]
     Overflow,
