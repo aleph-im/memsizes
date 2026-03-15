@@ -37,11 +37,11 @@ pub trait MemorySize: Sized + Copy {
 
     /// Convert to raw bytes as a `Bytes` newtype (checked multiply).
     fn to_bytes(self) -> Result<Bytes, MemConvError> {
-        Bytes::from_units_checked(
-            self.units()
-                .checked_mul(Self::BYTES_PER_UNIT)
-                .ok_or(MemConvError::Overflow)?,
-        )
+        let bytes = self
+            .units()
+            .checked_mul(Self::BYTES_PER_UNIT)
+            .ok_or(MemConvError::Overflow)?;
+        Ok(Bytes::from_units(bytes))
     }
 
     /// Convert to another memory unit with **rounding**.
@@ -116,13 +116,6 @@ impl MemorySize for Bytes {
 impl From<u64> for Bytes {
     fn from(value: u64) -> Self {
         Self(value)
-    }
-}
-
-impl Bytes {
-    /// Additional constructor that can catch domain rules if you ever add them.
-    fn from_units_checked(units: u64) -> Result<Self, MemConvError> {
-        Ok(Self(units))
     }
 }
 
