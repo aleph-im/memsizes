@@ -178,11 +178,17 @@ macro_rules! mem_unit {
 mem_unit!(KiB, 1024u64, "KiB");
 mem_unit!(MiB, 1024u64 * 1024, "MiB");
 mem_unit!(GiB, 1024u64 * 1024 * 1024, "GiB");
+mem_unit!(TiB, 1024u64 * 1024 * 1024 * 1024, "TiB");
+mem_unit!(PiB, 1024u64 * 1024 * 1024 * 1024 * 1024, "PiB");
+mem_unit!(EiB, 1024u64 * 1024 * 1024 * 1024 * 1024 * 1024, "EiB");
 
 // Decimal SI units
 mem_unit!(KB, 1000u64, "KB");
 mem_unit!(MB, 1000u64 * 1000, "MB");
 mem_unit!(GB, 1000u64 * 1000 * 1000, "GB");
+mem_unit!(TB, 1000u64 * 1000 * 1000 * 1000, "TB");
+mem_unit!(PB, 1000u64 * 1000 * 1000 * 1000 * 1000, "PB");
+mem_unit!(EB, 1000u64 * 1000 * 1000 * 1000 * 1000 * 1000, "EB");
 
 #[cfg(test)]
 mod tests {
